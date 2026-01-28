@@ -197,7 +197,7 @@ class _ShipmentsScreenState extends State<ShipmentsScreen> {
           Icon(
             CupertinoIcons.cube_box,
             size: 64,
-            color: AppColors.textSecondary.withOpacity(0.5),
+            color: AppColors.textSecondary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -224,7 +224,7 @@ class _ShipmentsScreenState extends State<ShipmentsScreen> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: CupertinoColors.systemGrey.withOpacity(0.1),
+                color: CupertinoColors.systemGrey.withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -307,7 +307,7 @@ class _ShipmentsScreenState extends State<ShipmentsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _getStatusColor(status).withOpacity(0.1),
+        color: _getStatusColor(status).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

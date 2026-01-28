@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import '../constants/app_colors.dart';
 
@@ -10,14 +11,44 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _animationController.forward();
+  }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -30,13 +61,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
-
-    // Simulate API call
     await Future.delayed(const Duration(seconds: 1));
-
     setState(() => _isLoading = false);
-
-    // For now, accept any credentials
     widget.onLoginSuccess();
   }
 
@@ -59,157 +85,329 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      child: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.asset(
-                    'assets/images/1024.png',
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'LogiTMS',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Lojistik Yonetim Sistemi',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 48),
-
-                // Email Field
-                CupertinoTextField(
-                  controller: _emailController,
-                  placeholder: 'E-posta',
-                  prefix: const Padding(
-                    padding: EdgeInsets.only(left: 12),
-                    child: Icon(
-                      CupertinoIcons.mail,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                ),
-                const SizedBox(height: 16),
-
-                // Password Field
-                CupertinoTextField(
-                  controller: _passwordController,
-                  placeholder: 'Sifre',
-                  obscureText: _obscurePassword,
-                  prefix: const Padding(
-                    padding: EdgeInsets.only(left: 12),
-                    child: Icon(
-                      CupertinoIcons.lock,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  suffix: Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                      child: Icon(
-                        _obscurePassword
-                            ? CupertinoIcons.eye
-                            : CupertinoIcons.eye_slash,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _handleLogin(),
-                ),
-                const SizedBox(height: 12),
-
-                // Forgot Password
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      _showAlert(
-                        'Sifre Sifirlama',
-                        'Sifre sifirlama maili gonderildi.',
-                      );
-                    },
-                    child: const Text(
-                      'Sifremi Unuttum',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Login Button
-                SizedBox(
-                  width: double.infinity,
-                  child: CupertinoButton.filled(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    borderRadius: BorderRadius.circular(12),
-                    child: _isLoading
-                        ? const CupertinoActivityIndicator(
-                            color: CupertinoColors.white,
-                          )
-                        : const Text(
-                            'Giris Yap',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Version Info
-                const Text(
-                  'v1.0.0',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background Image
+          Image.asset(
+            'assets/images/login.jpg',
+            fit: BoxFit.cover,
+          ),
+          // Gradient Overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  CupertinoColors.black.withValues(alpha: 0.3),
+                  CupertinoColors.black.withValues(alpha: 0.7),
+                  CupertinoColors.black.withValues(alpha: 0.85),
+                ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
             ),
+          ),
+          // Content
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 60),
+                        // Logo & Title Section
+                        _buildHeader(),
+                        const SizedBox(height: 50),
+                        // Login Card
+                        _buildLoginCard(),
+                        const SizedBox(height: 40),
+                        // Footer
+                        _buildFooter(),
+                        const SizedBox(height: 30),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        // Icon Container
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: CupertinoColors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: CupertinoColors.white.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
+          ),
+          child: const Icon(
+            CupertinoIcons.cube_box_fill,
+            size: 40,
+            color: CupertinoColors.white,
+          ),
+        ),
+        const SizedBox(height: 24),
+        // App Name
+        const Text(
+          'LogiTMS',
+          style: TextStyle(
+            fontSize: 36,
+            fontWeight: FontWeight.w700,
+            color: CupertinoColors.white,
+            letterSpacing: 1.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Tagline
+        Text(
+          'Lojistik Yonetim Sistemi',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            color: CupertinoColors.white.withValues(alpha: 0.7),
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginCard() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: CupertinoColors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: CupertinoColors.white.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Welcome Text
+              const Text(
+                'Hos Geldiniz',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: CupertinoColors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Devam etmek icin giris yapin',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: CupertinoColors.white.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Email Field
+              _buildTextField(
+                controller: _emailController,
+                placeholder: 'E-posta adresiniz',
+                icon: CupertinoIcons.mail,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+              // Password Field
+              _buildTextField(
+                controller: _passwordController,
+                placeholder: 'Sifreniz',
+                icon: CupertinoIcons.lock,
+                isPassword: true,
+              ),
+              const SizedBox(height: 16),
+              // Forgot Password
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () {
+                    _showAlert(
+                      'Sifre Sifirlama',
+                      'Sifre sifirlama maili gonderildi.',
+                    );
+                  },
+                  child: Text(
+                    'Sifremi Unuttum',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: CupertinoColors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              // Login Button
+              _buildLoginButton(),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String placeholder,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    bool isPassword = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: CupertinoColors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: CupertinoColors.white.withValues(alpha: 0.15),
+          width: 1,
+        ),
+      ),
+      child: CupertinoTextField(
+        controller: controller,
+        placeholder: placeholder,
+        placeholderStyle: TextStyle(
+          color: CupertinoColors.white.withValues(alpha: 0.4),
+          fontSize: 15,
+        ),
+        style: const TextStyle(
+          color: CupertinoColors.white,
+          fontSize: 15,
+        ),
+        obscureText: isPassword ? _obscurePassword : false,
+        prefix: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: Icon(
+            icon,
+            color: CupertinoColors.white.withValues(alpha: 0.6),
+            size: 20,
+          ),
+        ),
+        suffix: isPassword
+            ? Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _obscurePassword = !_obscurePassword);
+                  },
+                  child: Icon(
+                    _obscurePassword
+                        ? CupertinoIcons.eye
+                        : CupertinoIcons.eye_slash,
+                    color: CupertinoColors.white.withValues(alpha: 0.6),
+                    size: 20,
+                  ),
+                ),
+              )
+            : null,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: const BoxDecoration(
+          color: CupertinoColors.transparent,
+        ),
+        keyboardType: keyboardType,
+        textInputAction:
+            isPassword ? TextInputAction.done : TextInputAction.next,
+        onSubmitted: isPassword ? (_) => _handleLogin() : null,
+      ),
+    );
+  }
+
+  Widget _buildLoginButton() {
+    return GestureDetector(
+      onTap: _isLoading ? null : _handleLogin,
+      child: Container(
+        width: double.infinity,
+        height: 54,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary,
+              AppColors.primary.withValues(alpha: 0.8),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Center(
+          child: _isLoading
+              ? const CupertinoActivityIndicator(
+                  color: CupertinoColors.white,
+                )
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Giris Yap',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: CupertinoColors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(
+                      CupertinoIcons.arrow_right,
+                      color: CupertinoColors.white,
+                      size: 18,
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        Text(
+          'Powered by LogiTMS',
+          style: TextStyle(
+            fontSize: 12,
+            color: CupertinoColors.white.withValues(alpha: 0.4),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'v1.0.0',
+          style: TextStyle(
+            fontSize: 11,
+            color: CupertinoColors.white.withValues(alpha: 0.3),
+          ),
+        ),
+      ],
     );
   }
 }

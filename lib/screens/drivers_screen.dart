@@ -191,7 +191,7 @@ class _DriversScreenState extends State<DriversScreen> {
           Icon(
             CupertinoIcons.person_2,
             size: 64,
-            color: AppColors.textSecondary.withOpacity(0.5),
+            color: AppColors.textSecondary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -218,7 +218,7 @@ class _DriversScreenState extends State<DriversScreen> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: CupertinoColors.systemGrey.withOpacity(0.1),
+                color: CupertinoColors.systemGrey.withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -230,7 +230,7 @@ class _DriversScreenState extends State<DriversScreen> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: _getStatusColor(driver.status).withOpacity(0.1),
+                  color: _getStatusColor(driver.status).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(28),
                 ),
                 child: Center(
@@ -266,7 +266,7 @@ class _DriversScreenState extends State<DriversScreen> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.error.withOpacity(0.1),
+                              color: AppColors.error.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
@@ -286,7 +286,7 @@ class _DriversScreenState extends State<DriversScreen> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.warning.withOpacity(0.1),
+                              color: AppColors.warning.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
@@ -340,7 +340,7 @@ class _DriversScreenState extends State<DriversScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: _getStatusColor(status).withOpacity(0.1),
+        color: _getStatusColor(status).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -400,7 +400,7 @@ class _DriversScreenState extends State<DriversScreen> {
                         width: 64,
                         height: 64,
                         decoration: BoxDecoration(
-                          color: _getStatusColor(driver.status).withOpacity(0.1),
+                          color: _getStatusColor(driver.status).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(32),
                         ),
                         child: Center(
