@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import '../constants/app_colors.dart';
+import '../services/device_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
@@ -69,7 +70,50 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    widget.onLoginSuccess();
+    // Check device registration
+    final deviceService = DeviceService();
+    final hasRegistered = await deviceService.hasRegisteredDevice();
+
+    if (!hasRegistered) {
+      // First time login - register this device
+      await deviceService.registerCurrentDevice();
+      widget.onLoginSuccess();
+      return;
+    }
+
+    final isCurrentDevice = await deviceService.isCurrentDeviceRegistered();
+
+    if (isCurrentDevice) {
+      // Same device - allow login
+      widget.onLoginSuccess();
+    } else {
+      // Different device - request admin approval
+      await deviceService.requestDeviceApproval();
+      _showDeviceApprovalDialog();
+    }
+  }
+
+  void _showDeviceApprovalDialog() {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Cihaz Onay Gerekli'),
+        content: const Text(
+          'Bu uygulama baska bir cihazda kayitli. '
+          'Bu cihazda kullanmak icin admin onay\u0131 gereklidir.\n\n'
+          'Lutfen sistem yoneticinize basvurun.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Tamam'),
+            onPressed: () {
+              Navigator.pop(context);
+              _goBackToEmail();
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _onHiddenPinChanged(String value) {
@@ -296,24 +340,7 @@ class _LoginScreenState extends State<LoginScreen> {
           onTap: () => _hiddenPinFocusNode.requestFocus(),
           child: _buildPinFields(),
         ),
-        const SizedBox(height: 20),
-        // Resend code
-        Center(
-          child: GestureDetector(
-            onTap: () {
-              _showAlert('Kod Gonderildi', 'Yeni PIN kodu gonderildi.');
-            },
-            child: Text(
-              'Kodu tekrar gonder',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 32),
         // Login button
         _buildLoginButton(),
         const SizedBox(height: 24),
