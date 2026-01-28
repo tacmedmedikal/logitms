@@ -11,8 +11,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController(text: 'test@test.com');
   final _hiddenPinController = TextEditingController();
   final _hiddenPinFocusNode = FocusNode();
@@ -21,35 +20,11 @@ class _LoginScreenState extends State<LoginScreen>
     (_) => TextEditingController(),
   );
 
-  bool _isLoading = false;
   bool _emailValidated = false;
   int _currentStep = 0; // 0: email, 1: pin
 
-  late AnimationController _animationController;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-    _animationController.forward();
-  }
-
   @override
   void dispose() {
-    _animationController.dispose();
     _emailController.dispose();
     _hiddenPinController.dispose();
     _hiddenPinFocusNode.dispose();
@@ -74,13 +49,7 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    // Simulate email verification
-    await Future.delayed(const Duration(milliseconds: 800));
-
     setState(() {
-      _isLoading = false;
       _emailValidated = true;
     });
 
@@ -178,24 +147,21 @@ class _LoginScreenState extends State<LoginScreen>
                 child: SizedBox(),
               ),
               // Bottom white panel
-              SlideTransition(
-                position: _slideAnimation,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: CupertinoColors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(32),
-                      topRight: Radius.circular(32),
-                    ),
+              Container(
+                decoration: const BoxDecoration(
+                  color: CupertinoColors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
                   ),
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 32, 28, 20),
-                      child: _currentStep == 0
-                          ? _buildEmailStep()
-                          : _buildPinStep(),
-                    ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 32, 28, 20),
+                    child: _currentStep == 0
+                        ? _buildEmailStep()
+                        : _buildPinStep(),
                   ),
                 ),
               ),
@@ -366,8 +332,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildEmailField() {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
+    return Container(
       decoration: BoxDecoration(
         color: _emailValidated
             ? CupertinoColors.systemGreen.withValues(alpha: 0.1)
@@ -420,8 +385,7 @@ class _LoginScreenState extends State<LoginScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(6, (index) {
         final bool isFilled = _pinControllers[index].text.isNotEmpty;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+        return Container(
           margin: const EdgeInsets.symmetric(horizontal: 6),
           width: 48,
           height: 56,
@@ -491,7 +455,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildContinueButton() {
     return GestureDetector(
-      onTap: _isLoading ? null : _validateEmail,
+      onTap: _validateEmail,
       child: Container(
         width: double.infinity,
         height: 56,
@@ -513,31 +477,27 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ],
         ),
-        child: Center(
-          child: _isLoading
-              ? const CupertinoActivityIndicator(
+        child: const Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Devam Et',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
                   color: CupertinoColors.white,
-                )
-              : const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Devam Et',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: CupertinoColors.white,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(
-                      CupertinoIcons.arrow_right,
-                      color: CupertinoColors.white,
-                      size: 20,
-                    ),
-                  ],
+                  letterSpacing: 0.3,
                 ),
+              ),
+              SizedBox(width: 8),
+              Icon(
+                CupertinoIcons.arrow_right,
+                color: CupertinoColors.white,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -545,7 +505,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildLoginButton() {
     return GestureDetector(
-      onTap: _isLoading ? null : _validatePin,
+      onTap: _validatePin,
       child: Container(
         width: double.infinity,
         height: 56,
@@ -567,31 +527,27 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ],
         ),
-        child: Center(
-          child: _isLoading
-              ? const CupertinoActivityIndicator(
+        child: const Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Giris Yap',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
                   color: CupertinoColors.white,
-                )
-              : const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Giris Yap',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: CupertinoColors.white,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(
-                      CupertinoIcons.arrow_right,
-                      color: CupertinoColors.white,
-                      size: 20,
-                    ),
-                  ],
+                  letterSpacing: 0.3,
                 ),
+              ),
+              SizedBox(width: 8),
+              Icon(
+                CupertinoIcons.arrow_right,
+                color: CupertinoColors.white,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
