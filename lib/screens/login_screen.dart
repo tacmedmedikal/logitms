@@ -1,5 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import '../constants/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,12 +13,19 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _emailController = TextEditingController(text: 'test@test.com');
+  final _hiddenPinController = TextEditingController();
+  final _hiddenPinFocusNode = FocusNode();
+  final List<TextEditingController> _pinControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
+
   bool _isLoading = false;
-  bool _obscurePassword = true;
+  bool _emailValidated = false;
+  int _currentStep = 0; // 0: email, 1: pin
+
   late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
   @override
@@ -26,21 +33,15 @@ class _LoginScreenState extends State<LoginScreen>
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-      ),
+      duration: const Duration(milliseconds: 800),
     );
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 1),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+        curve: Curves.easeOutCubic,
       ),
     );
     _animationController.forward();
@@ -50,13 +51,56 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _animationController.dispose();
     _emailController.dispose();
-    _passwordController.dispose();
+    _hiddenPinController.dispose();
+    _hiddenPinFocusNode.dispose();
+    for (var controller in _pinControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showAlert('Hata', 'Lutfen tum alanlari doldurun.');
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  Future<void> _validateEmail() async {
+    if (_emailController.text.isEmpty) {
+      _showAlert('Hata', 'Lutfen e-posta adresinizi girin.');
+      return;
+    }
+
+    if (!_isValidEmail(_emailController.text)) {
+      _showAlert('Hata', 'Gecerli bir e-posta adresi girin.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // Simulate email verification
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    setState(() {
+      _isLoading = false;
+      _emailValidated = true;
+    });
+
+    // Wait for green animation then move to PIN step
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    setState(() {
+      _currentStep = 1;
+    });
+
+    // Focus hidden PIN input
+    await Future.delayed(const Duration(milliseconds: 300));
+    _hiddenPinFocusNode.requestFocus();
+  }
+
+  Future<void> _validatePin() async {
+    String pin = _hiddenPinController.text;
+
+    if (pin.length != 6) {
+      _showAlert('Hata', 'Lutfen 6 haneli PIN kodunu girin.');
       return;
     }
 
@@ -64,6 +108,30 @@ class _LoginScreenState extends State<LoginScreen>
     await Future.delayed(const Duration(seconds: 1));
     setState(() => _isLoading = false);
     widget.onLoginSuccess();
+  }
+
+  void _onHiddenPinChanged(String value) {
+    setState(() {
+      for (int i = 0; i < 6; i++) {
+        _pinControllers[i].text = i < value.length ? value[i] : '';
+      }
+    });
+
+    // Auto submit when all fields are filled
+    if (value.length == 6) {
+      _validatePin();
+    }
+  }
+
+  void _goBackToEmail() {
+    setState(() {
+      _currentStep = 0;
+      _emailValidated = false;
+      _hiddenPinController.clear();
+      for (var controller in _pinControllers) {
+        controller.clear();
+      }
+    });
   }
 
   void _showAlert(String title, String message) {
@@ -93,268 +161,431 @@ class _LoginScreenState extends State<LoginScreen>
             'assets/images/login.jpg',
             fit: BoxFit.cover,
           ),
-          // Gradient Overlay
+          // Dark overlay at top
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  CupertinoColors.black.withValues(alpha: 0.3),
-                  CupertinoColors.black.withValues(alpha: 0.7),
-                  CupertinoColors.black.withValues(alpha: 0.85),
+                  CupertinoColors.black.withValues(alpha: 0.4),
+                  CupertinoColors.black.withValues(alpha: 0.2),
+                  CupertinoColors.transparent,
                 ],
-                stops: const [0.0, 0.5, 1.0],
+                stops: const [0.0, 0.3, 0.5],
               ),
             ),
           ),
           // Content
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
+          Column(
+            children: [
+              // Top empty area (shows background image)
+              const Expanded(
+                flex: 4,
+                child: SizedBox(),
+              ),
+              // Bottom white panel
+              SlideTransition(
                 position: _slideAnimation,
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 28),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 60),
-                        // Logo & Title Section
-                        _buildHeader(),
-                        const SizedBox(height: 50),
-                        // Login Card
-                        _buildLoginCard(),
-                        const SizedBox(height: 40),
-                        // Footer
-                        _buildFooter(),
-                        const SizedBox(height: 30),
-                      ],
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: CupertinoColors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(32),
+                      topRight: Radius.circular(32),
+                    ),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 32, 28, 20),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 400),
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.1, 0),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _currentStep == 0
+                            ? _buildEmailStep()
+                            : _buildPinStep(),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildEmailStep() {
     return Column(
+      key: const ValueKey('email_step'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Icon Container
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: CupertinoColors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: CupertinoColors.white.withValues(alpha: 0.3),
-              width: 1.5,
+        // Handle bar
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGrey4,
+              borderRadius: BorderRadius.circular(2),
             ),
-          ),
-          child: const Icon(
-            CupertinoIcons.cube_box_fill,
-            size: 40,
-            color: CupertinoColors.white,
           ),
         ),
         const SizedBox(height: 24),
-        // App Name
+        // Welcome text
         const Text(
-          'LogiTMS',
+          'Hos Geldiniz',
           style: TextStyle(
-            fontSize: 36,
+            fontSize: 28,
             fontWeight: FontWeight.w700,
-            color: CupertinoColors.white,
-            letterSpacing: 1.5,
+            color: CupertinoColors.black,
+            letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 8),
-        // Tagline
+        const SizedBox(height: 6),
         Text(
-          'Lojistik Yonetim Sistemi',
+          'Devam etmek icin e-posta adresinizi girin',
           style: TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.w400,
-            color: CupertinoColors.white.withValues(alpha: 0.7),
-            letterSpacing: 0.5,
+            color: CupertinoColors.systemGrey,
+          ),
+        ),
+        const SizedBox(height: 32),
+        // Email field
+        _buildEmailField(),
+        const SizedBox(height: 28),
+        // Continue button
+        _buildContinueButton(),
+        const SizedBox(height: 24),
+        // Footer
+        Center(
+          child: Text(
+            'Powered by LogiTMS v1.0.0',
+            style: TextStyle(
+              fontSize: 12,
+              color: CupertinoColors.systemGrey3,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLoginCard() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: CupertinoColors.white.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: CupertinoColors.white.withValues(alpha: 0.2),
-              width: 1,
+  Widget _buildPinStep() {
+    return Column(
+      key: const ValueKey('pin_step'),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Handle bar
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGrey4,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Welcome Text
-              const Text(
-                'Hos Geldiniz',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: CupertinoColors.white,
+        ),
+        const SizedBox(height: 24),
+        // Back button and title row
+        Row(
+          children: [
+            GestureDetector(
+              onTap: _goBackToEmail,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemGrey6,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  CupertinoIcons.back,
+                  color: CupertinoColors.black,
+                  size: 20,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Devam etmek icin giris yapin',
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'PIN Girisi',
                 style: TextStyle(
-                  fontSize: 14,
-                  color: CupertinoColors.white.withValues(alpha: 0.6),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: CupertinoColors.black,
+                  letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 32),
-              // Email Field
-              _buildTextField(
-                controller: _emailController,
-                placeholder: 'E-posta adresiniz',
-                icon: CupertinoIcons.mail,
-                keyboardType: TextInputType.emailAddress,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '${_emailController.text} adresine gonderilen 6 haneli kodu girin',
+          style: TextStyle(
+            fontSize: 15,
+            color: CupertinoColors.systemGrey,
+          ),
+        ),
+        const SizedBox(height: 32),
+        // Hidden PIN input
+        _buildHiddenPinInput(),
+        // PIN fields
+        GestureDetector(
+          onTap: () => _hiddenPinFocusNode.requestFocus(),
+          child: _buildPinFields(),
+        ),
+        const SizedBox(height: 20),
+        // Resend code
+        Center(
+          child: GestureDetector(
+            onTap: () {
+              _showAlert('Kod Gonderildi', 'Yeni PIN kodu gonderildi.');
+            },
+            child: Text(
+              'Kodu tekrar gonder',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
               ),
-              const SizedBox(height: 16),
-              // Password Field
-              _buildTextField(
-                controller: _passwordController,
-                placeholder: 'Sifreniz',
-                icon: CupertinoIcons.lock,
-                isPassword: true,
-              ),
-              const SizedBox(height: 16),
-              // Forgot Password
-              Align(
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: () {
-                    _showAlert(
-                      'Sifre Sifirlama',
-                      'Sifre sifirlama maili gonderildi.',
-                    );
-                  },
-                  child: Text(
-                    'Sifremi Unuttum',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: CupertinoColors.white.withValues(alpha: 0.8),
+            ),
+          ),
+        ),
+        const SizedBox(height: 28),
+        // Login button
+        _buildLoginButton(),
+        const SizedBox(height: 24),
+        // Footer
+        Center(
+          child: Text(
+            'Powered by LogiTMS v1.0.0',
+            style: TextStyle(
+              fontSize: 12,
+              color: CupertinoColors.systemGrey3,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmailField() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      decoration: BoxDecoration(
+        color: _emailValidated
+            ? CupertinoColors.systemGreen.withValues(alpha: 0.1)
+            : CupertinoColors.systemGrey6,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _emailValidated
+              ? CupertinoColors.systemGreen
+              : CupertinoColors.systemGrey5,
+          width: _emailValidated ? 2 : 1,
+        ),
+      ),
+      child: CupertinoTextField(
+        controller: _emailController,
+        placeholder: 'E-posta adresiniz',
+        placeholderStyle: TextStyle(
+          color: CupertinoColors.systemGrey,
+          fontSize: 15,
+        ),
+        style: TextStyle(
+          color: _emailValidated
+              ? CupertinoColors.systemGreen.darkColor
+              : CupertinoColors.black,
+          fontSize: 15,
+        ),
+        enabled: !_emailValidated,
+        prefix: Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: Icon(
+            _emailValidated ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.mail,
+            color: _emailValidated
+                ? CupertinoColors.systemGreen
+                : CupertinoColors.systemGrey,
+            size: 20,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: const BoxDecoration(
+          color: CupertinoColors.transparent,
+        ),
+        keyboardType: TextInputType.emailAddress,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _validateEmail(),
+      ),
+    );
+  }
+
+  Widget _buildPinFields() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(6, (index) {
+        final bool isFilled = _pinControllers[index].text.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          width: 48,
+          height: 56,
+          decoration: BoxDecoration(
+            color: isFilled
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : CupertinoColors.systemGrey6,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isFilled
+                  ? AppColors.primary
+                  : CupertinoColors.systemGrey4,
+              width: isFilled ? 2 : 1.5,
+            ),
+            boxShadow: isFilled
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: isFilled
+                ? Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  )
+                : Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemGrey4,
+                      shape: BoxShape.circle,
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 28),
-              // Login Button
-              _buildLoginButton(),
-            ],
           ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildHiddenPinInput() {
+    return Opacity(
+      opacity: 0,
+      child: SizedBox(
+        height: 1,
+        child: CupertinoTextField(
+          controller: _hiddenPinController,
+          focusNode: _hiddenPinFocusNode,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+          ],
+          onChanged: _onHiddenPinChanged,
         ),
       ),
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String placeholder,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    bool isPassword = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: CupertinoColors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: CupertinoColors.white.withValues(alpha: 0.15),
-          width: 1,
-        ),
-      ),
-      child: CupertinoTextField(
-        controller: controller,
-        placeholder: placeholder,
-        placeholderStyle: TextStyle(
-          color: CupertinoColors.white.withValues(alpha: 0.4),
-          fontSize: 15,
-        ),
-        style: const TextStyle(
-          color: CupertinoColors.white,
-          fontSize: 15,
-        ),
-        obscureText: isPassword ? _obscurePassword : false,
-        prefix: Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: Icon(
-            icon,
-            color: CupertinoColors.white.withValues(alpha: 0.6),
-            size: 20,
+  Widget _buildContinueButton() {
+    return GestureDetector(
+      onTap: _isLoading ? null : _validateEmail,
+      child: Container(
+        width: double.infinity,
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary,
+              AppColors.primary.withValues(alpha: 0.85),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
-        suffix: isPassword
-            ? Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() => _obscurePassword = !_obscurePassword);
-                  },
-                  child: Icon(
-                    _obscurePassword
-                        ? CupertinoIcons.eye
-                        : CupertinoIcons.eye_slash,
-                    color: CupertinoColors.white.withValues(alpha: 0.6),
-                    size: 20,
-                  ),
+        child: Center(
+          child: _isLoading
+              ? const CupertinoActivityIndicator(
+                  color: CupertinoColors.white,
+                )
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Devam Et',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: CupertinoColors.white,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(
+                      CupertinoIcons.arrow_right,
+                      color: CupertinoColors.white,
+                      size: 20,
+                    ),
+                  ],
                 ),
-              )
-            : null,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: const BoxDecoration(
-          color: CupertinoColors.transparent,
         ),
-        keyboardType: keyboardType,
-        textInputAction:
-            isPassword ? TextInputAction.done : TextInputAction.next,
-        onSubmitted: isPassword ? (_) => _handleLogin() : null,
       ),
     );
   }
 
   Widget _buildLoginButton() {
     return GestureDetector(
-      onTap: _isLoading ? null : _handleLogin,
+      onTap: _isLoading ? null : _validatePin,
       child: Container(
         width: double.infinity,
-        height: 54,
+        height: 56,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
               AppColors.primary,
-              AppColors.primary.withValues(alpha: 0.8),
+              AppColors.primary.withValues(alpha: 0.85),
             ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: AppColors.primary.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -369,45 +600,22 @@ class _LoginScreenState extends State<LoginScreen>
                     Text(
                       'Giris Yap',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 17,
                         fontWeight: FontWeight.w600,
                         color: CupertinoColors.white,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     SizedBox(width: 8),
                     Icon(
                       CupertinoIcons.arrow_right,
                       color: CupertinoColors.white,
-                      size: 18,
+                      size: 20,
                     ),
                   ],
                 ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFooter() {
-    return Column(
-      children: [
-        Text(
-          'Powered by LogiTMS',
-          style: TextStyle(
-            fontSize: 12,
-            color: CupertinoColors.white.withValues(alpha: 0.4),
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'v1.0.0',
-          style: TextStyle(
-            fontSize: 11,
-            color: CupertinoColors.white.withValues(alpha: 0.3),
-          ),
-        ),
-      ],
     );
   }
 }
