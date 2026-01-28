@@ -132,7 +132,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
               child: _filteredVehicles.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
                       itemCount: _filteredVehicles.length,
                       itemBuilder: (context, index) {
                         return _buildVehicleCard(_filteredVehicles[index]);

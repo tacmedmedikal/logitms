@@ -134,7 +134,7 @@ class _ShipmentsScreenState extends State<ShipmentsScreen> {
               child: _filteredShipments.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
                       itemCount: _filteredShipments.length,
                       itemBuilder: (context, index) {
                         return _buildShipmentCard(_filteredShipments[index]);

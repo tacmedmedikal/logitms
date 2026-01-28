@@ -128,7 +128,7 @@ class _DriversScreenState extends State<DriversScreen> {
               child: _filteredDrivers.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
                       itemCount: _filteredDrivers.length,
                       itemBuilder: (context, index) {
                         return _buildDriverCard(_filteredDrivers[index]);

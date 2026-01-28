@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../constants/app_colors.dart';
 import '../models/shipment.dart';
+import 'scanner_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -11,6 +12,44 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  bool _isSearchVisible = false;
+  final ScrollController _scrollController = ScrollController();
+  double _scrollOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    setState(() {
+      _scrollOffset = _scrollController.offset;
+    });
+  }
+
+  void _openScanner() async {
+    final result = await Navigator.push<String>(
+      context,
+      CupertinoPageRoute(
+        builder: (context) => const ScannerScreen(),
+      ),
+    );
+
+    if (result != null && mounted) {
+      // Handle the scanned barcode result
+      // For now, just show a toast or handle the result as needed
+      debugPrint('Scanned barcode: $result');
+    }
+  }
+
   // Mock data - will be replaced with real data from API
   final List<Shipment> _recentShipments = [
     Shipment(
@@ -44,49 +83,284 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    final expandedHeight = topPadding + (_isSearchVisible ? 140 : 80);
+
+    // Calculate collapse progress (0 = expanded, 1 = collapsed)
+    final collapseProgress = (_scrollOffset / 60).clamp(0.0, 1.0);
+
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('Dashboard'),
-        trailing: Icon(CupertinoIcons.bell),
-      ),
-      child: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Summary Cards
-                    _buildSummaryCards(),
-                    const SizedBox(height: 24),
-
-                    // Weekly Chart
-                    _buildWeeklyChart(),
-                    const SizedBox(height: 24),
-
-                    // Recent Shipments
-                    const Text(
-                      'Son Sevkiyatlar',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
+      backgroundColor: AppColors.background,
+      child: Container(
+        color: AppColors.background,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Scrollable content
+            CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              // Space for header
+              SliverToBoxAdapter(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: expandedHeight,
                 ),
               ),
-            ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildShipmentCard(_recentShipments[index]),
-                childCount: _recentShipments.length,
+              SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Summary Cards
+                  _buildSummaryCards(),
+                  const SizedBox(height: 24),
+                  // Weekly Chart
+                  _buildWeeklyChart(),
+                  const SizedBox(height: 24),
+                  // Recent Shipments
+                  const Text(
+                    'Son Sevkiyatlar',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
               ),
             ),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
+          ),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _buildShipmentCard(_recentShipments[index]),
+              childCount: _recentShipments.length,
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 120),
+          ),
+        ],
+      ),
+          // Fixed Header
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _buildHeader(context, collapseProgress),
+          ),
+        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, double collapseProgress) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
+    // Interpolate border radius based on collapse
+    final borderRadius = 28.0 * (1 - collapseProgress);
+
+    // Interpolate padding based on collapse
+    final bottomPadding = collapseProgress > 0.01 ? 8.0 : (_isSearchVisible ? 20.0 : 16.0);
+    final logoRowHeight = collapseProgress > 0.01 ? 32.0 : 44.0;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      padding: EdgeInsets.fromLTRB(20, topPadding + 8, 20, bottomPadding),
+      decoration: BoxDecoration(
+        color: AppColors.tigerTail5,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(borderRadius),
+          bottomRight: Radius.circular(borderRadius),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Top row: Logo, Icons using Stack for true centering
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: logoRowHeight,
+            child: Stack(
+              children: [
+                // Logo - left when expanded, centered when collapsed
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  left: 0,
+                  right: collapseProgress > 0.01 ? 0 : null,
+                  top: 0,
+                  bottom: 0,
+                  child: AnimatedAlign(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    alignment: collapseProgress > 0.01 ? Alignment.center : Alignment.centerLeft,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      height: collapseProgress > 0.01 ? 20 : 28,
+                      child: Image.asset(
+                        'assets/images/talaygif.gif',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+                // Buttons - hide when collapsed
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: collapseProgress > 0.3 ? 0.0 : 1.0,
+                    child: AnimatedScale(
+                      duration: const Duration(milliseconds: 200),
+                      scale: collapseProgress > 0.3 ? 0.0 : 1.0,
+                      child: Row(
+                        children: [
+                          _buildHeaderButton(
+                            icon: _isSearchVisible ? CupertinoIcons.xmark : CupertinoIcons.search,
+                            onTap: () {
+                              setState(() {
+                                _isSearchVisible = !_isSearchVisible;
+                              });
+                            },
+                            isActive: _isSearchVisible,
+                          ),
+                          const SizedBox(width: 10),
+                          _buildHeaderButton(
+                            icon: CupertinoIcons.barcode_viewfinder,
+                            onTap: _openScanner,
+                          ),
+                          const SizedBox(width: 10),
+                          _buildNotificationButton(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Search bar with animation - hide when collapsed
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            child: _isSearchVisible && collapseProgress < 0.5
+                ? Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: CupertinoColors.white.withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              CupertinoIcons.search,
+                              color: CupertinoColors.white.withValues(alpha: 0.6),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: CupertinoTextField(
+                                placeholder: 'Sevkiyat, arac veya surucu ara...',
+                                placeholderStyle: TextStyle(
+                                  color: CupertinoColors.white.withValues(alpha: 0.5),
+                                  fontSize: 15,
+                                ),
+                                style: const TextStyle(
+                                  color: CupertinoColors.white,
+                                  fontSize: 15,
+                                ),
+                                decoration: const BoxDecoration(
+                                  color: CupertinoColors.transparent,
+                                ),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isActive = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.tigerTail2
+              : CupertinoColors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(
+          icon,
+          color: isActive ? AppColors.tigerTail5 : CupertinoColors.white,
+          size: 20,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationButton() {
+    return GestureDetector(
+      onTap: () {},
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: CupertinoColors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Stack(
+          children: [
+            const Center(
+              child: Icon(
+                CupertinoIcons.bell,
+                color: CupertinoColors.white,
+                size: 20,
+              ),
+            ),
+            // Badge
+            Positioned(
+              right: 10,
+              top: 10,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.error,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.tigerTail5,
+                    width: 1.5,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
