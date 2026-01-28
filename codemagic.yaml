@@ -12,7 +12,7 @@ workflows:
         - app_store_credentials
       vars:
         APP_STORE_APPLE_ID: 6758373380
-        BUNDLE_ID: "com.logitms.logitms"
+        BUNDLE_ID: "com.logitmsv1.logitms"
 
     scripts:
       - name: Set up code signing settings on Xcode project
